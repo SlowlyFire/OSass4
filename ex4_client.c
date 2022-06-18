@@ -11,32 +11,32 @@
 
 // open the file "to_client_xxxx.txt" that have been created in the server, which contains the result
 void openingHandler(int sig) {
-    printf("in openingHandler\n");
     char nameOfFile[32] = {'\0'};
     strcat(nameOfFile, "to_client_");
     // pid of the client
     pid_t pid = getpid();
-    printf("this is the pid of the client: %d\n", pid);
     char mypid[16] = {'\0'};
     sprintf(mypid, "%d", pid);
     strcat(nameOfFile, mypid);
     strcat(nameOfFile, ".txt");
-    printf("open file named: %s\n", nameOfFile);
     int fd = open(nameOfFile, O_RDWR);
     if (fd == -1) {
-        printf("error occured in opening %s\n", nameOfFile);
+        printf("ERROR_FROM_EX4\n");
         exit(-1);
     }
 
     char buff[32] = {'\0'};
     if (read(fd, buff, 32) == -1) {
-        printf("error occured while reading from to_client_xxx.txt\n");
+        printf("ERROR_FROM_EX4\n");
         exit(-1);
     }
-    printf("this is the result we print to screen: %s\n", buff);
+    printf("%s\n", buff);
 
     // delete the file to_client_xxxx
-    close(fd);
+    if (close(fd) == -1) {
+        printf("ERROR_FROM_EX4\n");
+        exit(-1);
+    }
     unlink(nameOfFile);
 }
 
@@ -51,31 +51,41 @@ int main (int argc, char* argv[]) {
     signal(SIGUSR2, openingHandler);
     signal(SIGALRM, closeHandler);
 
+    // if number of arguments is not valid, then exit
+    if (argc != 5) {
+        printf("ERROR_FROM_EX4\n");
+        exit(-1);
+    }
+    
+    // if operator is not 1, 2, 3 or 4 according to the assaignment, then exit
+    int op = atoi(argv[3]);
+    if (op < 1 || op > 4) {
+        printf("ERROR_FROM_EX4\n");
+        exit(-1);
+    }
+
     srand(time(NULL));
     int counter = 0;
     // as long as "to_srv.txt" exists, client should randomly wait, untill its good to use again
     while(access("to_srv.txt", F_OK) != -1) {
-        printf("file exists oh yes\n");
         // rand a number between 1 to 5
         int random = rand() % 5 + 1;
-        printf("waiting for %d seconds\n", random);
+        printf("Waiting for %d seconds\n", random);
         sleep(random);
         counter++;
         if(counter == 10) {
-            printf("client isn't gonna wait anymore.\n");
+            printf("Client isn't gonna wait anymore.\n");
             // exit the client proccess
             exit(-1);
         }
     }
 
     // create a file "to_srv.txt" if its not already exists
-    int fd;
-    fd = open("to_srv.txt", O_RDWR | O_CREAT, 0777);
+    int fd = open("to_srv.txt", O_RDWR | O_CREAT, 0777);
     if (fd == -1) {
-        printf("error occured in opening to_srv.txt\n");
+        printf("ERROR_FROM_EX4\n");
         exit(-1);
     }
-    printf("opened srv.txt\n");
 
     // initalize the file "to_srv.txt" with all the 4 arguments, that we send to the server
     // first, write the pid of the client
@@ -98,12 +108,9 @@ int main (int argc, char* argv[]) {
 
     // sending a signal from the client to the server after creating the file "to_srv.txt"
     pid_t serverPid = atoi(argv[1]);
-    printf("this is the server pid: %d\n", serverPid);
     kill(serverPid, SIGUSR1);
-    printf("sent a first kill to server, after created to_srv.txt\n");
     // client wait for the result from the server for 30 seconds
     alarm(30);
     // if we got a signal back from the server, the alarm is cancelled.
     pause();
-    printf("after pause, now we go to open the client file and print the result to screen\n");
 }

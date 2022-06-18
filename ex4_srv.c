@@ -14,7 +14,6 @@
 void alarmHandler (int sig) {
     printf("The server was closed because no service request was received for the last 60 second\n");
     // terminates all the zombie proccesses
-    printf("killing all the zombies\n");
     while(wait(NULL) != -1);
     exit(-1);
 }
@@ -27,14 +26,14 @@ void workingHandler(int sig) {
     // Forking a child
     pid_t pid;
 	if ((pid = fork()) == -1) {
-        printf("couldn't fork\n");
+        printf("ERROR_FROM_EX4\n");
         exit(-1);
 	// if fork = 0 I'm in son proccess
 	} else if (pid == 0) {
         // open the given file from the client
         int fd = open("to_srv.txt", O_RDWR);
         if (fd == -1) {
-            printf("error occured in opening to_srv.txt\n");
+            printf("ERROR_FROM_EX4\n");
             exit(-1);
         }
         // read the given string from the file, and save them, so we can delete "to_srv.txt" asap
@@ -44,34 +43,25 @@ void workingHandler(int sig) {
         char* firstNum = strtok(NULL, "\n");
         char* operator = strtok(NULL, "\n");
         char* secondNum = strtok(NULL, "\n");
-        printf("\n");
-        printf("client pid is: %s\n", clientPid);
-        printf("%s\n", firstNum);
-        printf("%s\n", operator);
-        printf("%s\n", secondNum);
+        //printf("\n");
 
         // after we read all the lines, we delete the file
         if (close(fd) == -1) {
-            printf("an error occured while trying to close to_srv.txt\n");
+            printf("ERROR_FROM_EX4\n");
             exit(-1);
         }
         unlink("to_srv.txt");
-        printf("unlinked\n");
 
         // creating a new file "to_client_xxxx.txt"
         char nameOfFile[30] = {'\0'};
         strcat(nameOfFile, "to_client_");
-        printf("%s\n", nameOfFile);
         strcat(nameOfFile, clientPid);
-        printf("%s\n", nameOfFile);
         strcat(nameOfFile, ".txt");
-        printf("%s\n", nameOfFile);
         int fdNew = open(nameOfFile, O_RDWR | O_CREAT, 0777);
         if (fdNew == -1) {
-            printf("error occured while trying to open a new file to_client_xxxx.txt\n");
+            printf("ERROR_FROM_EX4\n");
             exit(-1);
         }
-        printf("created a file clientxxx\n");
 
         // calculates the result we need to send to the client
         int result;
@@ -87,7 +77,7 @@ void workingHandler(int sig) {
             result = firstNumVal * secondNumVal;
         } else if (!strcmp(operator, "4")) {
             if (secondNumVal == 0) {
-                write(fdNew, "division by 0 is forbidden!\n", 28);
+                write(fdNew, "CANNOT_DIVIDE_BY_ZERO", 22);
                 // we send here the signal to client and exit, because there is no need
                 // to keep the son proccess.
                 kill(clientPidInt, SIGUSR2);
@@ -95,16 +85,13 @@ void workingHandler(int sig) {
             }
             result = firstNumVal / secondNumVal;
         }
-        printf("result is: %d\n", result);
 
         // write the calculated result to "to_client_xxxxx.txt" file, as a string
         char resultString[16];
         sprintf(resultString, "%d", result);
-        printf("this is the result in string: %s\n", resultString);
         write(fdNew, resultString, strlen(resultString));
 
         // now we should send a signal to the client we have finished
-        printf("sending a signal to client with pid: %d\n", clientPidInt);
         kill(clientPidInt, SIGUSR2);
         exit(-1);
 	} else {
@@ -121,13 +108,15 @@ int main(int argc, char* argv[]) {
 
     // checks if "to_srv.txt" file exists. if it does exists, the server will close it
     if (access("to_srv.txt", F_OK) != -1) {
-        printf("to_srv.txt file does exists, we close it now\n");
         int fd = open("to_srv.txt", O_RDWR);
         if (fd == -1) {
-            printf("error occured while trying to open to_srv.txt file\n");
+            printf("ERROR_FROM_EX4\n");
             exit(-1);
         }
-        close(fd); 
+        if (close(fd) == -1) {
+            printf("ERROR_FROM_EX4\n");
+            exit(-1);
+        }
         unlink("to_srv.txt");
     }
 
